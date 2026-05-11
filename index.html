@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="This Week">
+<meta name="theme-color" content="#0a0a0a">
+<title>This Week</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --surface3: #222222;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --border3: rgba(255,255,255,0.2);
+    --text: #f0ede6;
+    --muted: rgba(240,237,230,0.4);
+    --dim: rgba(240,237,230,0.18);
+    --green: #b4e87a;
+    --green-dim: rgba(180,232,122,0.1);
+    --green-mid: rgba(180,232,122,0.28);
+    --amber: #f5c842;
+    --amber-dim: rgba(245,200,66,0.1);
+    --red: #ff6b6b;
+    --red-dim: rgba(255,107,107,0.1);
+    --blue: #6ab0f5;
+    --blue-dim: rgba(106,176,245,0.1);
+    --purple: #c49af5;
+    --purple-dim: rgba(196,154,245,0.1);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+  body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+
+  .app { max-width: 480px; margin: 0 auto; width: 100%; padding: 0 20px 100px; }
+
+  /* HEADER */
+  .header { padding: 52px 0 24px; }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+  .app-title { font-family: 'Syne', sans-serif; font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--text); }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-top: 4px; }
+  .week-badge { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 5px 10px; white-space: nowrap; }
+  .edit-toggle { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 5px 12px; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; white-space: nowrap; }
+  .edit-toggle.active { color: var(--amber); border-color: rgba(245,200,66,0.4); background: var(--amber-dim); }
+
+  /* PROGRESS */
+  .progress-wrap { background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 6px; }
+  .progress-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .progress-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .progress-count { font-size: 12px; font-weight: 500; color: var(--green); }
+  .bar-track { height: 3px; background: var(--border2); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--green); border-radius: 99px; transition: width 0.4s cubic-bezier(0.34,1.56,0.64,1); width: 0%; }
+
+  /* FUN GATE */
+  .fun-gate { border-radius: 12px; border: 0.5px solid var(--border); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 28px; transition: all 0.3s ease; }
+  .fun-gate.unlocked { background: var(--green-dim); border-color: var(--green-mid); }
+  .gate-icon { font-size: 15px; flex-shrink: 0; }
+  .gate-text { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .fun-gate.unlocked .gate-text { color: var(--green); }
+
+  /* SECTIONS */
+  .section { margin-bottom: 24px; }
+  .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 0 2px; }
+  .section-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; white-space: nowrap; }
+  .section-line { flex: 1; height: 0.5px; background: var(--border); }
+
+  /* ITEMS */
+  .item { display: flex; align-items: center; gap: 12px; padding: 13px 14px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; margin-bottom: 6px; transition: opacity 0.25s, border-color 0.15s; position: relative; }
+  .item.done { opacity: 0.38; }
+  .item.done .item-text { text-decoration: line-through; color: var(--muted); }
+
+  .drag-handle { cursor: grab; color: var(--dim); font-size: 14px; padding: 0 2px; display: none; flex-shrink: 0; touch-action: none; }
+  .edit-mode .drag-handle { display: block; }
+  .drag-handle:active { cursor: grabbing; }
+  .item.dragging { opacity: 0.4; border-color: var(--border3); }
+  .item.drag-over { border-color: var(--amber); background: var(--amber-dim); }
+
+  .check { width: 20px; height: 20px; min-width: 20px; border-radius: 6px; border: 1.5px solid var(--border2); display: flex; align-items: center; justify-content: center; transition: background 0.2s, border-color 0.2s; background: transparent; cursor: pointer; flex-shrink: 0; }
+  .item.done .check { background: var(--green); border-color: var(--green); }
+  .check-svg { opacity: 0; transition: opacity 0.15s; width: 11px; height: 11px; }
+  .item.done .check-svg { opacity: 1; }
+
+  .item-middle { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .item-text { font-size: 13.5px; color: var(--text); line-height: 1.35; flex: 1; min-width: 0; cursor: pointer; }
+  .tag { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; white-space: nowrap; font-weight: 500; flex-shrink: 0; cursor: pointer; }
+  .tag-errand { background: var(--blue-dim); color: var(--blue); }
+  .tag-home { background: var(--green-dim); color: #9cd65a; }
+  .tag-personal { background: var(--purple-dim); color: var(--purple); }
+  .tag-research { background: var(--amber-dim); color: var(--amber); }
+
+  .item-actions { display: none; align-items: center; gap: 6px; flex-shrink: 0; }
+  .edit-mode .item-actions { display: flex; }
+  .edit-mode .item-text { cursor: default; }
+
+  .btn-icon { width: 28px; height: 28px; border-radius: 8px; border: 0.5px solid var(--border2); background: transparent; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; flex-shrink: 0; font-family: 'DM Mono', monospace; }
+  .btn-icon:active { transform: scale(0.92); }
+  .btn-edit:hover, .btn-edit:active { color: var(--amber); border-color: rgba(245,200,66,0.4); background: var(--amber-dim); }
+  .btn-delete:hover, .btn-delete:active { color: var(--red); border-color: rgba(255,107,107,0.4); background: var(--red-dim); }
+
+  /* ADD ITEM ROW */
+  .add-row { display: none; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); border: 0.5px dashed var(--border2); border-radius: 12px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
+  .edit-mode .add-row { display: flex; }
+  .add-row:active { border-color: var(--green-mid); }
+  .add-plus { width: 20px; height: 20px; min-width: 20px; border-radius: 6px; border: 1.5px solid var(--border2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; line-height: 1; }
+  .add-label { font-size: 13px; color: var(--dim); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; align-items: flex-end; justify-content: center; padding: 0; backdrop-filter: blur(4px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 24px 20px 40px; padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; display: block; }
+  .modal-input { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px; outline: none; transition: border-color 0.15s; }
+  .modal-input:focus { border-color: var(--border3); }
+  .tag-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag-opt { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px; border-radius: 20px; cursor: pointer; border: 1.5px solid transparent; transition: border-color 0.15s; font-weight: 500; font-family: 'DM Mono', monospace; }
+  .tag-opt.selected { border-color: currentColor; }
+  .tag-opt.errand { background: var(--blue-dim); color: var(--blue); }
+  .tag-opt.home { background: var(--green-dim); color: #9cd65a; }
+  .tag-opt.personal { background: var(--purple-dim); color: var(--purple); }
+  .tag-opt.research { background: var(--amber-dim); color: var(--amber); }
+  .cat-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cat-opt { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px; border-radius: 20px; cursor: pointer; border: 1.5px solid var(--border2); color: var(--muted); transition: all 0.15s; font-weight: 500; font-family: 'DM Mono', monospace; background: var(--surface2); }
+  .cat-opt.selected { color: var(--text); border-color: var(--border3); background: var(--surface3); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-cancel { flex: 1; padding: 13px; background: transparent; border: 0.5px solid var(--border2); border-radius: 12px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; cursor: pointer; }
+  .btn-save { flex: 2; padding: 13px; background: var(--green); border: none; border-radius: 12px; color: #0a0a0a; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; cursor: pointer; transition: opacity 0.15s; }
+  .btn-save:active { opacity: 0.85; }
+  .btn-cancel:active { color: var(--text); }
+
+  /* BOTTOM BAR */
+  .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 20px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 60%, transparent); display: flex; justify-content: center; pointer-events: none; }
+  .reset-btn { pointer-events: all; padding: 11px 28px; background: transparent; border: 0.5px solid var(--border2); border-radius: 20px; color: var(--dim); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+  .reset-btn:active { color: var(--red); border-color: rgba(255,107,107,0.5); }
+
+  @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal { animation: slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="header">
+    <div class="header-top">
+      <h1 class="app-title">This<br>Week.</h1>
+      <div class="header-right">
+        <span class="week-badge" id="week-badge">—</span>
+        <button class="edit-toggle" id="edit-toggle" onclick="toggleEditMode()">✎ edit list</button>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-row">
+        <span class="progress-label">Must-do progress</span>
+        <span class="progress-count" id="progress-count">0 / 0</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
+    </div>
+
+    <div class="fun-gate" id="fun-gate">
+      <span class="gate-icon">🔒</span>
+      <span class="gate-text" id="gate-text">Complete all must-do tasks before doing anything fun</span>
+    </div>
+  </div>
+
+  <div id="sections-root"></div>
+
+</div>
+
+<div class="bottom-bar">
+  <button class="reset-btn" onclick="resetAll()">↺ reset week</button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Add item</div>
+    <div class="modal-field">
+      <label class="modal-label">Task</label>
+      <input class="modal-input" id="modal-text" type="text" placeholder="What needs to get done?" maxlength="80">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Tag</label>
+      <div class="tag-picker">
+        <button class="tag-opt errand" data-tag="errand" onclick="selectTag('errand')">errand</button>
+        <button class="tag-opt home" data-tag="home" onclick="selectTag('home')">home</button>
+        <button class="tag-opt personal" data-tag="personal" onclick="selectTag('personal')">personal</button>
+        <button class="tag-opt research" data-tag="research" onclick="selectTag('research')">research</button>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Section</label>
+      <div class="cat-picker">
+        <button class="cat-opt" data-cat="must" onclick="selectCat('must')">Must do</button>
+        <button class="cat-opt" data-cat="bonus" onclick="selectCat('bonus')">If applicable</button>
+        <button class="cat-opt" data-cat="backlog" onclick="selectCat('backlog')">Backlog</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DEFAULT DATA ──────────────────────────────────────────────
+const DEFAULT_ITEMS = [
+  { id:'car',        text:'Clean car interior + car wash', tag:'errand',   cat:'must',    done:false },
+  { id:'laundry',    text:'Fold laundry',                  tag:'home',     cat:'must',    done:false },
+  { id:'costco',     text:'Costco run + gas',              tag:'errand',   cat:'must',    done:false },
+  { id:'haircut',    text:'Haircut',                       tag:'personal', cat:'must',    done:false },
+  { id:'madden',     text:'Look into Madden 26 modded',    tag:'personal', cat:'must',    done:false },
+  { id:'texts',      text:'Reply to sitting texts / emails',tag:'personal',cat:'bonus',   done:false },
+  { id:'returns',    text:'Return anything (packages, store)',tag:'errand', cat:'bonus',   done:false },
+  { id:'room',       text:'Tidy room / put things away',   tag:'home',     cat:'bonus',   done:false },
+  { id:'trash',      text:'Take out trash / recycling',    tag:'home',     cat:'bonus',   done:false },
+  { id:'grooming',   text:'Nail trim / grooming',          tag:'personal', cat:'bonus',   done:false },
+  { id:'phone',      text:'Clear camera roll / back up phone',tag:'personal',cat:'bonus', done:false },
+  { id:'stocks',     text:'Stock research → buy an option',tag:'research', cat:'backlog', done:false },
+  { id:'statements', text:'Credit card statements sanity check',tag:'research',cat:'backlog',done:false },
+];
+
+const SECTIONS = [
+  { key:'must',    label:'Must do' },
+  { key:'bonus',   label:'If applicable' },
+  { key:'backlog', label:'Backlog' },
+];
+
+// ── STATE ─────────────────────────────────────────────────────
+let items = [];
+let editMode = false;
+let dragSrcId = null;
+let modalMode = null; // 'add' | 'edit'
+let editingId = null;
+let modalTag = 'personal';
+let modalCat = 'must';
+
+function load() {
+  try {
+    const saved = localStorage.getItem('tw_items_v2');
+    if (saved) { items = JSON.parse(saved); return; }
+    // migrate old done-only state
+    const oldState = JSON.parse(localStorage.getItem('tw_state') || '{}');
+    items = DEFAULT_ITEMS.map(i => ({ ...i, done: !!oldState[i.id] }));
+  } catch { items = DEFAULT_ITEMS.map(i => ({...i})); }
+}
+
+function save() { localStorage.setItem('tw_items_v2', JSON.stringify(items)); }
+
+function uid() { return 'i' + Date.now() + Math.random().toString(36).slice(2,6); }
+
+// ── RENDER ────────────────────────────────────────────────────
+function render() {
+  const root = document.getElementById('sections-root');
+  root.className = editMode ? 'edit-mode' : '';
+  root.innerHTML = '';
+
+  SECTIONS.forEach(sec => {
+    const secItems = items.filter(i => i.cat === sec.key);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'section';
+
+    wrap.innerHTML = `<div class="section-header"><span class="section-label">${sec.label}</span><div class="section-line"></div></div>`;
+
+    secItems.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'item' + (item.done ? ' done' : '');
+      el.dataset.id = item.id;
+      el.draggable = editMode;
+
+      el.innerHTML = `
+        <div class="drag-handle" title="drag to reorder">⠿</div>
+        <div class="check" onclick="toggleDone('${item.id}')">
+          <svg class="check-svg" viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 4.5,9 10.5,3" stroke="#0a0a0a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="item-middle">
+          <span class="item-text" onclick="${editMode ? '' : `toggleDone('${item.id}')`}">${escHtml(item.text)}</span>
+          <span class="tag tag-${item.tag}">${item.tag}</span>
+        </div>
+        <div class="item-actions">
+          <button class="btn-icon btn-edit" onclick="openEdit('${item.id}')" title="Edit">✎</button>
+          <button class="btn-icon btn-delete" onclick="deleteItem('${item.id}')" title="Delete">✕</button>
+        </div>`;
+
+      if (editMode) {
+        el.addEventListener('dragstart', e => { dragSrcId = item.id; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+        el.addEventListener('dragend', () => { el.classList.remove('dragging'); clearDragOver(); });
+        el.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; clearDragOver(); el.classList.add('drag-over'); });
+        el.addEventListener('drop', e => { e.preventDefault(); dropOn(item.id); });
+      }
+
+      wrap.appendChild(el);
+    });
+
+    // add row
+    const addRow = document.createElement('div');
+    addRow.className = 'add-row';
+    addRow.innerHTML = `<div class="add-plus">+</div><span class="add-label">Add item to "${sec.label}"</span>`;
+    addRow.onclick = () => openAdd(sec.key);
+    wrap.appendChild(addRow);
+
+    root.appendChild(wrap);
+  });
+
+  updateUI();
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── DRAG & DROP ───────────────────────────────────────────────
+function clearDragOver() { document.querySelectorAll('.item.drag-over').forEach(e => e.classList.remove('drag-over')); }
+
+function dropOn(targetId) {
+  clearDragOver();
+  if (!dragSrcId || dragSrcId === targetId) return;
+  const si = items.findIndex(i => i.id === dragSrcId);
+  const ti = items.findIndex(i => i.id === targetId);
+  if (si < 0 || ti < 0) return;
+  const src = items.splice(si, 1)[0];
+  const newTi = items.findIndex(i => i.id === targetId);
+  items.splice(newTi, 0, src);
+  // sync category to drop target's section
+  src.cat = items[items.findIndex(i => i.id === targetId) + (si > newTi ? 0 : -1) + 1]?.cat || src.cat;
+  // simpler: set src cat = target cat
+  src.cat = items.find(i => i.id === targetId).cat;
+  save();
+  render();
+}
+
+// ── TOGGLE DONE ───────────────────────────────────────────────
+function toggleDone(id) {
+  if (editMode) return;
+  const item = items.find(i => i.id === id);
+  if (item) { item.done = !item.done; save(); render(); }
+}
+
+// ── EDIT MODE ─────────────────────────────────────────────────
+function toggleEditMode() {
+  editMode = !editMode;
+  const btn = document.getElementById('edit-toggle');
+  btn.textContent = editMode ? '✓ done editing' : '✎ edit list';
+  btn.classList.toggle('active', editMode);
+  render();
+}
+
+// ── MODAL ─────────────────────────────────────────────────────
+function openAdd(cat) {
+  modalMode = 'add';
+  editingId = null;
+  modalTag = 'personal';
+  modalCat = cat;
+  document.getElementById('modal-title').textContent = 'Add item';
+  document.getElementById('modal-text').value = '';
+  syncModalPickers();
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-text').focus(), 100);
+}
+
+function openEdit(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  modalMode = 'edit';
+  editingId = id;
+  modalTag = item.tag;
+  modalCat = item.cat;
+  document.getElementById('modal-title').textContent = 'Edit item';
+  document.getElementById('modal-text').value = item.text;
+  syncModalPickers();
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-text').focus(), 100);
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOnBg(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+
+function selectTag(t) { modalTag = t; syncModalPickers(); }
+function selectCat(c) { modalCat = c; syncModalPickers(); }
+
+function syncModalPickers() {
+  document.querySelectorAll('.tag-opt').forEach(b => b.classList.toggle('selected', b.dataset.tag === modalTag));
+  document.querySelectorAll('.cat-opt').forEach(b => b.classList.toggle('selected', b.dataset.cat === modalCat));
+}
+
+function saveItem() {
+  const text = document.getElementById('modal-text').value.trim();
+  if (!text) { document.getElementById('modal-text').focus(); return; }
+  if (modalMode === 'add') {
+    items.push({ id: uid(), text, tag: modalTag, cat: modalCat, done: false });
+  } else {
+    const item = items.find(i => i.id === editingId);
+    if (item) { item.text = text; item.tag = modalTag; item.cat = modalCat; }
+  }
+  save();
+  closeModal();
+  render();
+}
+
+// ── DELETE ────────────────────────────────────────────────────
+function deleteItem(id) {
+  if (!confirm('Remove this item?')) return;
+  items = items.filter(i => i.id !== id);
+  save();
+  render();
+}
+
+// ── PROGRESS / GATE ───────────────────────────────────────────
+function updateUI() {
+  const mustItems = items.filter(i => i.cat === 'must');
+  const mustDone = mustItems.filter(i => i.done).length;
+  const total = mustItems.length;
+  const pct = total ? Math.round((mustDone / total) * 100) : 0;
+  document.getElementById('bar-fill').style.width = pct + '%';
+  document.getElementById('progress-count').textContent = mustDone + ' / ' + total;
+  const gate = document.getElementById('fun-gate');
+  const gateText = document.getElementById('gate-text');
+  if (total > 0 && mustDone >= total) {
+    gate.className = 'fun-gate unlocked';
+    gate.querySelector('.gate-icon').textContent = '🎉';
+    gateText.textContent = 'All done — go have fun, you earned it';
+  } else {
+    gate.className = 'fun-gate';
+    gate.querySelector('.gate-icon').textContent = '🔒';
+    const left = total - mustDone;
+    gateText.textContent = left + ' must-do item' + (left !== 1 ? 's' : '') + ' left before fun';
+  }
+}
+
+// ── RESET ─────────────────────────────────────────────────────
+function resetAll() {
+  if (!confirm('Reset all checks for the new week?')) return;
+  items.forEach(i => i.done = false);
+  save();
+  render();
+}
+
+// ── KEYBOARD (modal) ─────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('modal-overlay').classList.contains('open')) saveItem();
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── INIT ──────────────────────────────────────────────────────
+function getWeekLabel() {
+  const now = new Date();
+  const day = now.getDay();
+  const start = new Date(now);
+  start.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+  const end = new Date(start); end.setDate(start.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  return fmt(start) + ' – ' + fmt(end);
+}
+
+document.getElementById('week-badge').textContent = getWeekLabel();
+load();
+render();
+</script>
+</body>
+</html>
