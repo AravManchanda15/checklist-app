@@ -139,6 +139,17 @@
   .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 20px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 60%, transparent); display: flex; justify-content: center; pointer-events: none; }
   .reset-btn { pointer-events: all; padding: 11px 28px; background: transparent; border: 0.5px solid var(--border2); border-radius: 20px; color: var(--dim); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
   .reset-btn:active { color: var(--red); border-color: rgba(255,107,107,0.5); }
+  .notif-btn { pointer-events: all; padding: 11px 18px; background: transparent; border: 0.5px solid var(--border2); border-radius: 20px; color: var(--dim); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+  .notif-btn.active { color: var(--green); border-color: rgba(180,232,122,0.4); }
+  .bottom-bar { gap: 10px; }
+  .sub-sheet { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: flex-end; z-index: 200; }
+  .sub-sheet-inner { width: 100%; background: var(--surface); border-top: 0.5px solid var(--border2); border-radius: 20px 20px 0 0; padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); }
+  .sub-sheet h3 { font-size: 14px; font-family: 'Syne', sans-serif; margin-bottom: 8px; }
+  .sub-sheet p { font-size: 11px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+  .sub-sheet textarea { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 10px; padding: 10px; resize: none; height: 90px; }
+  .sub-sheet-btns { display: flex; gap: 8px; margin-top: 12px; }
+  .sub-copy-btn { flex: 1; padding: 12px; background: var(--green); color: #0a0a0a; border: none; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; cursor: pointer; }
+  .sub-close-btn { padding: 12px 20px; background: var(--surface2); color: var(--muted); border: 0.5px solid var(--border2); border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; }
 
   @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .modal { animation: slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1); }
@@ -176,6 +187,19 @@
 
 <div class="bottom-bar">
   <button class="reset-btn" onclick="resetAll()">↺ reset week</button>
+  <button class="notif-btn" id="notif-btn" onclick="setupNotifications()">🔔 notify</button>
+</div>
+
+<div class="sub-sheet" id="sub-sheet" style="display:none">
+  <div class="sub-sheet-inner">
+    <h3>Enable Notifications</h3>
+    <p>Copy this and paste it as the <strong>PUSH_SUBSCRIPTION</strong> environment variable in your Cloudflare Worker dashboard.</p>
+    <textarea id="sub-json" readonly></textarea>
+    <div class="sub-sheet-btns">
+      <button class="sub-copy-btn" onclick="copySubJson()">Copy JSON</button>
+      <button class="sub-close-btn" onclick="document.getElementById('sub-sheet').style.display='none'">Done</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL -->
@@ -462,6 +486,64 @@ function getWeekLabel() {
 document.getElementById('week-badge').textContent = getWeekLabel();
 load();
 render();
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'BEqG6SAOE5BjUWV_tps7YD6dMgp4xBNoq36ttRKvoMpUKPxRXUnqMPMUCZVzgRBPmvALe6Xe0fXGAY93Jel8hUo';
+
+function urlBase64ToUint8Array(base64String) {
+  const pad = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+
+async function setupNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('Push notifications are not supported in this browser.\n\nMake sure you\'ve added this app to your Home Screen on iOS 16.4+.');
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    alert('Notification permission denied. Enable it in Settings > Safari.');
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    document.getElementById('notif-btn').classList.add('active');
+    document.getElementById('notif-btn').textContent = '🔔 enabled';
+    document.getElementById('sub-json').value = JSON.stringify(sub.toJSON(), null, 2);
+    document.getElementById('sub-sheet').style.display = 'flex';
+  } catch (err) {
+    alert('Failed to subscribe: ' + err.message);
+  }
+}
+
+function copySubJson() {
+  const ta = document.getElementById('sub-json');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const btn = document.querySelector('.sub-copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy JSON', 1500);
+  });
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/checklist-app/sw.js').then(async reg => {
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      document.getElementById('notif-btn').classList.add('active');
+      document.getElementById('notif-btn').textContent = '🔔 enabled';
+    }
+  });
+}
 </script>
 </body>
 </html>
