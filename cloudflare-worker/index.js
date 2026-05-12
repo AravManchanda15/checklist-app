@@ -22,23 +22,17 @@ function fromB64url(str) {
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 }
 
-async function importVapidPrivateKey(b64) {
-  const raw = fromB64url(b64);
-  // Wrap raw P-256 private key bytes in PKCS8 DER
-  const prefix = new Uint8Array([
-    0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06,
-    0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
-    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03,
-    0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01,
-    0x01, 0x04, 0x20,
-  ]);
-  const pkcs8 = new Uint8Array(prefix.length + raw.length);
-  pkcs8.set(prefix);
-  pkcs8.set(raw, prefix.length);
+async function importVapidPrivateKey(privateKeyB64, publicKeyB64) {
+  // Extract x and y from the uncompressed public key (04 || x || y)
+  const pub = fromB64url(publicKeyB64);
+  const x = b64url(pub.slice(1, 33));
+  const y = b64url(pub.slice(33, 65));
   return crypto.subtle.importKey(
-    'pkcs8', pkcs8.buffer,
+    'jwk',
+    { kty: 'EC', crv: 'P-256', x, y, d: privateKeyB64, ext: true },
     { name: 'ECDSA', namedCurve: 'P-256' },
-    false, ['sign']
+    false,
+    ['sign']
   );
 }
 
@@ -48,10 +42,10 @@ async function buildVapidAuth(endpoint, publicKey, privateKeyB64) {
   const payload = b64url(JSON.stringify({
     aud: origin,
     exp: Math.floor(Date.now() / 1000) + 43200,
-    sub: 'mailto:notifications@checklist-app.local',
+    sub: 'mailto:arav@checklist-app.com',
   }));
   const unsigned = `${header}.${payload}`;
-  const key = await importVapidPrivateKey(privateKeyB64);
+  const key = await importVapidPrivateKey(privateKeyB64, publicKey);
   const sig = await crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     key,
@@ -69,25 +63,27 @@ async function sendPush(env) {
     headers: {
       'Authorization': auth,
       'TTL': '86400',
-      'Content-Length': '0',
     },
   });
   return res;
 }
 
 export default {
-  // Cron trigger — fires every 4 hours
   async scheduled(event, env, ctx) {
     const res = await sendPush(env);
     console.log('Push sent:', res.status);
   },
 
-  // HTTP handler — GET /send to trigger manually for testing
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === '/send') {
-      const res = await sendPush(env);
-      return new Response(`Push sent: ${res.status}`, { status: 200 });
+      try {
+        const res = await sendPush(env);
+        const body = await res.text();
+        return new Response(`Status: ${res.status}\n${body}`, { status: 200 });
+      } catch (e) {
+        return new Response(`Error: ${e.message}`, { status: 500 });
+      }
     }
     return new Response('Checklist notification worker running.', { status: 200 });
   },
